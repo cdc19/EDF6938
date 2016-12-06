@@ -1,0 +1,169 @@
+---
+title: "Homework 7 -- Due Monday November 2, 2015"
+author: "Cheryl Calhoun"
+date: "10/26/2015"
+output: html_document
+---
+
+```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+
+## Setup the working environment.
+
+## setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Week 9")
+## setwd("C:/Users/07001412/OneDrive/Education/UF/2015/Fall/EDF6938/Week 9")
+
+## library(dplyr)
+## library(ggplot2)
+## library(glmnet)
+## library(party)
+```
+
+## Assignment
+
+In our last homework we covered the use of regular expressions and the extraction of particular sub-sequences. In this assignment we will practice the use of the "look ahead" and "look-behind" operators, which return search matches but do not extract any characters.
+
+### Gettysburg Address Analysis:
+
+```{r}
+gettysburg <- "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.
+
+Letter Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.
+
+But, in a larger sense, we can not dedicate -- we can not consecrate -- we can not hallow -- this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us -- that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion -- that we here highly resolve that these dead shall not have died in vain -- that this nation, under God, shall have a new birth of freedom -- and that government of the people, by the people, for the people, shall not perish from the earth."
+```
+
+**Challenge:** Use a look-ahead to find a match for the word "men", but only when it is not followed by a comma. 
+
+```{r}
+## Find all occurences of the word "men", but only when it is not followed by a comma.
+men <- gregexpr("(?<= )men(?!,)", gettysburg, perl="TRUE")
+## Create variable begin to hold the charachter position of "men".
+begin <- men[[1]][1]
+## Use the substr() function to verify the word men is located at the position returned by the gregexpr() query.
+substr(gettysburg, begin, begin+2)
+```
+
+**Results:** Using the `length()` function, we see that there is only `r length(men)` occurance of the word men that is not followed by a comma.  This occurance is located at the `r men[1]`th character in the text string which I've verified by counting the characters. 
+
+**Challenge:** Find all two word clauses that begin with the word "a", but only extract the second word.
+
+```{r}
+## Find the two word clauses that begin with the word "a" -- "a banana", "a peach" -- but only extract the second word. 
+## Use a look-behind to capture this pattern.
+twowordmatches <- gregexpr("(?<=a )[a-z]*", gettysburg, perl="TRUE")
+twowordmatches <- regmatches (gettysburg, twowordmatches)
+twowordmatches
+```
+
+**Challenge:** Find all six-letter words. 
+
+```{r}
+## Find all words that contain exactly 6 uppercase and or lowercase letters.
+sixletterwords <- gregexpr("\\b[A-z][A-z]{5}\\b", gettysburg, perl="TRUE") 
+regmatches (gettysburg, sixletterwords)
+```
+
+***
+
+### Best Selling Music Album Analysis
+
+The best selling music albums in history are listed at:  http://mentalfloss.com/article/62536/20-best-selling-albums-history
+
+The relevant text has been extracted and saved to `http://www.acthomas.ca/FSSS/data/20bestalbums.txt`. Below is an extraction is from the file for Led Zeppelin's third-best-selling album of all time:
+
+```
+<p>*</p>
+<h4>3. Led Zeppelin - Led Zeppelin IV // 23 million</h4>
+</p>
+<div id="file-189923" class="file file-image file-image-jpeg">
+<div class="content">
+    <img src="http://images.mentalfloss.com/sites/default/files/styles/insert_main_wide_image/public/61qte9kingl.jpg" width="500" height="497" alt="" title="" /></div>
+</div>
+<p><a href="http://www.amazon.com/gp/product/B00M30SPMU/ref=as_li_tl?ie=UTF8&amp;camp=1789&amp;creative=9325&amp;creativeASIN=B00M30SPMU&amp;linkCode=as2&amp;tag=mentalfloss0a-20&amp;linkId=PZSPXPZVTN3ZLUC3">Buy on Amazon</a></p>
+<p>*</p>
+```
+
+```{r}
+## Load the text file in from http://www.acthomas.ca/FSSS/data/20bestalbums.txt:
+albumfile <- readLines  ("http://www.acthomas.ca/FSSS/data/20bestalbums.txt")
+```
+
+**Results:** Using the `length()` function, we see that there are `r length(albumfile)` raw lines of text in this file. 
+
+***
+####Extracting the album lines for analysis
+
+We'll begin by extracting the lines that contain the band, album name, and number of albums sold.
+
+```{r}
+## Finding the files that have "movies" in the URL.
+albumlist <- grep ("\\<h4\\>", albumfile, value="TRUE")
+albumlist <- gsub("Guns.*Roses", "Guns and Roses", albumlist)
+albumlist <- gsub("  ", " ", albumlist)
+albumlist
+length(albumlist)
+```
+
+**Results:** There are `r length(albumlist)` best-selling albums. This is due to a tie at #20.
+
+Next, we'll extract the name of the artists.
+
+```{r}
+## Extract the name of the artists using `gregexpr()` and `regmatches()`. 
+artists = gregexpr("(?<=. )[A-z/ ]+(?= - )", albumlist, TRUE, perl="TRUE")
+artists <- unlist (regmatches (albumlist, artists))
+length(artists)
+artists
+length(unique(artists))
+unique(artists)
+```
+
+**Results:** There are `r length(artists)` artists and `r length(unique(artists))` unique artists in this list.
+
+Then, the name of the album.  
+
+```{r}
+## Extract the name of the album
+albums = gregexpr("(?<= - )[A-Z][A-z0-9 -]+(?= // )", albumlist, TRUE, perl="TRUE")
+albums <- unlist (regmatches (albumlist, albums))
+albums
+```
+
+And the  the number of albums sold. 
+
+```{r}
+## Extract the number of albums sold.
+sold = gregexpr("(?<= // )[0-9][A-z0-9 -]+(?=</h4>)", albumlist, TRUE, perl="TRUE")
+sold <- unlist (regmatches (albumlist, sold))
+sold
+```
+
+***
+###Analyzing the full file
+
+This time, we'll apply our search operations to the full file and not the reduced version, extracting each piece in one pass. 
+
+```{r}
+## Extract the name of the artists using `gregexpr()` and `regmatches()`. 
+albumfile <- readLines  ("http://www.acthomas.ca/FSSS/data/20bestalbums.txt")
+artists = gregexpr("(?<=. )[A-z/ ]+(?= - )", albumfile, TRUE, perl="TRUE")
+artists <- unlist (regmatches (albumfile, artists))
+length(artists)
+artists
+length(unique(artists))
+unique(artists)
+
+## Extract the name of the album
+albums = gregexpr("(?<= - )[A-Z][A-z0-9 -]+(?= // )", albumfile, TRUE, perl="TRUE")
+albums <- unlist (regmatches (albumfile, albums))
+albums
+
+## Extract the number of albums sold.
+sold = gregexpr("(?<= // )[0-9][A-z0-9 -]+(?=</h4>)", albumfile, TRUE, perl="TRUE")
+sold <- unlist (regmatches (albumfile, sold))
+sold
+```
+
+**Results:** The original search terms seems to work fine with the full file, so I did not need to make any adjustments to the search terms.
+
+***
