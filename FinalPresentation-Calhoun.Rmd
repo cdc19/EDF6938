@@ -1,0 +1,184 @@
+---
+title: "EDF 6938 Final Presentation"
+author: "Cheryl Calhoun"
+date: "December 5, 2015"
+output: 
+  ioslides_presentation: 
+    fig_height: 4.5
+    fig_width: 7.5
+    smaller: yes
+---
+
+<style type="text/css">
+
+th {  background-color:#E0E0E0 ;
+      border-bottom:1px solid black;
+      padding:5px;}
+
+td {
+border-bottom:1px dotted black;
+padding:5px;
+width:auto}
+
+table { 
+border-collapse:collapse;
+margin:auto;
+ border: 1px solid black;}
+ 
+caption {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    color: #777;
+    text-align: left;
+    font-size: 18px;
+}
+
+</style>
+
+```{r Setup Work Environment, echo=FALSE, message=FALSE}
+
+## Setting the working directory path so that all the files will load correctly.
+
+## setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Calhoun-Final/FinalProject")    ## Work computer 
+setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Calhoun-Final/FinalProject")     ## Home computer
+
+## Loading twitterR and other supporting libraries.
+library(dplyr)               # Data preparation and pipes %>%
+## library(twitteR)             # Provides an interface to the Twitter Web API
+## library(RCurl)               # The RCurl package is an R-interface to the libcurl library that provides HTTP facilities. 
+library(tm)                  # A framework for text mining applications within R.
+## library(SnowballC) 
+library(wordcloud)           # Allows us to create a word cloud.
+## library(RJSONIO)             # This provides compatiblity between R, Javascript & JSON. 
+## library(stringr)             # Provides additional functions for manipulating strings.
+## library(base64enc)           # Provides tools for base64 encoding.
+library(knitr)               # Gives access to more sophisticated printing options.
+library(ggplot2)             # Gives additonal graphing options
+## library(Rstem)
+## library(sentiment)
+## library(devtools)
+
+## Load the final data set.
+load("all.RData")
+
+```
+## Just for Fun...
+
+```{r WordCloud, eval=TRUE, warning=FALSE, echo=FALSE, message=FALSE}
+
+TweetCloud <- GameTweets$text
+TweetCloud <- gsub("(f|ht)tp(s?)://(.*)[.][a-z0-9/]+", "", TweetCloud)
+TweetCloud <- Corpus(VectorSource(TweetCloud))
+TweetCloud <- tm_map(TweetCloud, PlainTextDocument)
+TweetCloud <- tm_map(TweetCloud, removePunctuation)
+TweetCloud <- tm_map(TweetCloud, removeNumbers)
+TweetCloud <- tm_map(TweetCloud, removeWords, c('the', 'this', stopwords('english')))
+TweetCloud <- tm_map(TweetCloud, removeWords, c('GatorsFB', 'FSUvsUF', 'UFvsSC', 'character0'))
+TweetCloud <- tm_map(TweetCloud, stemDocument)
+wordcloud(TweetCloud, max.words = 100, random.order = FALSE)
+```
+
+## Schedule Results
+
+```{r schedule, echo=FALSE,  fig.width=4, fig.height=4}
+## Open the game schedule & results table.
+kable(Sched, digits=2, caption="Game Results and Spread Data Table")
+```
+
+## Data Collection
+
+* Game 01-08: 
+    + tweets were captured using the copy and paste method from a twitter advanced search on the game specific hashtag. 
+    + date range = game day -7 through game day -1
+* Game 09: 
+    + tweets were captured using the #GoGators hashtag and then filtered for the game specific hash tag.
+    + date range = game day -3 through game day -1
+* Game 10-12:
+    + tweets were captured using the game specific hashtag.
+    + date range = game day -7 through game day -1
+
+## Total Tweets by Game {.smaller}
+```{r Total Tweets, echo=FALSE}
+## Create a new dataframe `GameTweetsTable` to hold the summary table.
+GameTweetsTable <- GameTweets %>% 
+  group_by(Game) %>%
+  summarize(TotalTweets = n())
+## Sort the dataframe by Game and display the total tweets by game.
+GameTweetsTable <- GameTweetsTable[order(GameTweetsTable$Game),]
+kable(GameTweetsTable, digits=2, align = "c",  format = "html")
+```
+
+##Creating the Data Set
+
+The steps used to create this dataframe are as follows.
+
+1. Create dataframe `Sentiment` from original `GameTweets` dataframe.
+2. Add in the results from the `classify_polarity` analysis.
+3. Add in the results from the `classify_emotion` analysis.
+4. Join game results data from `Shed` frame.
+
+```{r load sentiment, warning=FALSE, echo=FALSE}
+load ("../FinalProject/Sentiment.RData")
+## The columns in the dataset
+names(Sentiment)
+```
+
+## Polarity Analysis
+
+```{r Positive Game Summary, echo=FALSE}
+## Create a new dataframe `polarity.sum` to hold the summary table.
+polarity.sum <- Sentiment %>% 
+  group_by(Game) %>%
+  summarize(Positive = sum(SBEST_FIT=="positive"),
+            Neutral = sum(SBEST_FIT=="neutral"),
+            Negative = sum(SBEST_FIT=="negative"),
+            Total = n(),
+            PosFrac = sum(SBEST_FIT=="positive")/n(),
+            NeutFrac = sum(SBEST_FIT=="neutral")/n(),
+            NegFrac = sum(SBEST_FIT=="negative")/n())
+
+## Sort the dataframe by PosFrac so that output will display positive polarity by Game.
+polarity.sum <- polarity.sum[order(-polarity.sum$PosFrac),]
+
+## Plot the average positivity score by game
+qplot(Game, PosFrac, data=polarity.sum, 
+      main = "Average Positivity Score by Game", 
+      xlab = "Games", 
+      ylab = "Average Positivity", 
+      geom = "bar", 
+      binwidth = 0.1, 
+      stat="identity") ##,  ylim = c(0.4,0.8)
+```
+
+## Polarity Analysis
+
+```{r Negative Game Summary, echo=FALSE}
+## Plot the average positivity score by game
+qplot(Game, NegFrac, data=polarity.sum, 
+      main = "Average Negativity Score by Game", 
+      xlab = "Games", 
+      ylab = "Average Negativity", 
+      geom = "bar", 
+      binwidth = 0.1, 
+      stat="identity") ##,  ylim = c(0.4,0.8)
+```
+
+##Beat the Spread Model
+
+```{r BEAT Model, warning=FALSE, echo=FALSE, message=FALSE}
+
+## Create variable for a Win Result
+WinData <- Sentiment %>%
+  mutate(WIN = (UFSCORE > OSCORE)) %>%
+  mutate(WINPlus = (MARGIN >= 7)) %>%
+  mutate(WINLess = (MARGIN <= 7)) %>%
+  mutate(BEAT = (MARGIN > SPREAD))
+
+## Evaluating a win model using BEST_FIT classifications.
+BEAT.model <- glm(BEAT ~  SBEST_FIT + EBEST_FIT, data=WinData, family=binomial)
+exp(coef(BEAT.model))
+confint(BEAT.model)
+
+```
+
+**Results:**  All of the coefficients are statistically significant except for fear. 
