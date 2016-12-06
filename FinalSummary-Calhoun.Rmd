@@ -1,0 +1,210 @@
+---
+title: "EDF 6938 Final Summary"
+author: "Cheryl Calhoun"
+date: "December 5, 2015"
+output: 
+  pdf_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 5
+    highlight: tango
+fontsize: 10pt
+geometry: margin=0.5in
+---
+
+<style type="text/css">
+
+th {  background-color:#E0E0E0 ;
+      border-bottom:1px solid black;
+      padding:5px;}
+
+td {
+border-bottom:1px dotted black;
+padding:5px;
+width:auto}
+
+table { 
+border-collapse:collapse;
+margin:auto;
+ border: 1px solid black;}
+ 
+caption {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    color: #777;
+    text-align: left;
+    font-size: 18px;
+}
+
+</style>
+
+```{r Setup Work Environment, echo=FALSE, message=FALSE}
+
+## Setting the working directory path so that all the files will load correctly.
+
+## setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Calhoun-Final/FinalProject")    ## Work computer 
+setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Calhoun-Final/FinalProject")     ## Home computer
+
+## Loading twitterR and other supporting libraries.
+library(dplyr)               # Data preparation and pipes %>%
+## library(twitteR)             # Provides an interface to the Twitter Web API
+## library(RCurl)               # The RCurl package is an R-interface to the libcurl library that provides HTTP facilities. 
+library(tm)                  # A framework for text mining applications within R.
+## library(SnowballC) 
+library(wordcloud)           # Allows us to create a word cloud.
+## library(RJSONIO)             # This provides compatiblity between R, Javascript & JSON. 
+## library(stringr)             # Provides additional functions for manipulating strings.
+## library(base64enc)           # Provides tools for base64 encoding.
+library(knitr)               # Gives access to more sophisticated printing options.
+library(ggplot2)             # Gives additonal graphing options
+## library(Rstem)
+## library(sentiment)
+## library(devtools)
+
+## Load the final data set.
+load("all.RData")
+
+## Load Sentiment dataframe.
+load ("../FinalProject/Sentiment.RData")
+
+```
+
+The purpose of this project was to capture twitter traffic leading up to a football game, then analyze the twitter text using the functions `classify_polarity` and `classify_emotion` to determine if we can develop a predictive model for whether or not the team will win the game, win the game by 7 points, win the game by less than 7 points, or beat the spread.
+
+## Data Collection
+
+The data collection process occurred in three phases. This was due to the retroactive nature of the project.  By the time we started data collection, data for games prior to Game 09 were no longer available via the Twitter API. The total number of tweets collected are listed in Table 1.
+
+* Game 01-08: 
+    + tweets were captured using the copy and paste method from a twitter advanced search on the game specific hashtag. 
+    + date range = game day -7 through game day -1
+* Game 09: 
+    + tweets were captured using the #GoGators hashtag and then filtered for the game specific hash tag.
+    + date range = game day -3 through game day -1
+* Game 10-12:
+    + tweets were captured using the game specific hashtag.
+    + date range = game day -7 through game day -1
+
+```{r Total Tweets by Game, echo=FALSE}
+## Create a new dataframe `GameTweetsTable` to hold the summary table.
+GameTweetsTable <- GameTweets %>% 
+  group_by(Game) %>%
+  summarize(TotalTweets = n())
+## Sort the dataframe by Game and display the total tweets by game.
+GameTweetsTable <- GameTweetsTable[order(GameTweetsTable$Game),]
+kable(GameTweetsTable, caption="Total Tweets Collected for Each Game")
+
+```
+
+##Schedule Results
+
+The results and spread data, as displayed in Figure 2, were collected using COVERS (http://www.covers.com/sports/ncaaf). This data was entered into an Excel spreadsheet and exported to Schedule.csv.
+
+```{r Schedule Results, echo=FALSE}
+## Open the game schedule & results table.
+Sched <- select(Sched, -H.A , -MARGIN)
+Sched <- rename(Sched, UF = UFSCORE, OP = OSCORE)
+kable(Sched, digits=2, caption="Univeristy of Florida 2015 Football Game Results and Spread Data Table")
+```
+
+##Creating the Full Data Set
+
+The steps used to create the dataframe that was used for analysis are as follows.
+
+1. Create dataframe `Sentiment` from original `GameTweets` dataframe.
+2. Add in the results from the `classify_polarity` analysis.
+3. Add in the results from the `classify_emotion` analysis.
+4. Join game results data from `Sched` frame (Table2 above).
+
+The resulting dataframe contains the following fields:
+
+```{r load sentiment, warning=FALSE, echo=FALSE}
+load ("../FinalProject/Sentiment.RData")
+
+## The columns in the dataset
+names(Sentiment)
+```
+
+## Polarity or Subjectivitiy Analysis
+
+The initial analysis of polarity or subjectivity, using the `BEST_FIT` results do show some correlation to game results as is shown in the Figure 1: Average Positivity Score by Game and Figure 2: Average Negativity Score by Game. 
+
+```{r Positive Game Summary, echo=FALSE, fig.height=2, fig.width=4}
+## Create a new dataframe `polarity.sum` to hold the summary table.
+polarity.sum <- Sentiment %>% 
+  group_by(Game) %>%
+  summarize(Positive = sum(SBEST_FIT=="positive"),
+            Neutral = sum(SBEST_FIT=="neutral"),
+            Negative = sum(SBEST_FIT=="negative"),
+            Total = n(),
+            PosFrac = sum(SBEST_FIT=="positive")/n(),
+            NeutFrac = sum(SBEST_FIT=="neutral")/n(),
+            NegFrac = sum(SBEST_FIT=="negative")/n())
+
+## Sort the dataframe by PosFrac so that output will display positive polarity by Game.
+polarity.sum <- polarity.sum[order(-polarity.sum$PosFrac),]
+
+## Plot the average positivity score by game
+qplot(Game, PosFrac, data=polarity.sum, 
+      main = "Average Positivity Score by Game", 
+      xlab = "Games", 
+      ylab = "Average Positivity", 
+      geom = "bar", 
+      binwidth = 0.1, 
+      stat="identity") ##,  ylim = c(0.4,0.8)
+
+## Plot the average positivity score by game
+qplot(Game, NegFrac, data=polarity.sum, 
+      main = "Average Negativity Score by Game", 
+      xlab = "Games", 
+      ylab = "Average Negativity", 
+      geom = "bar", 
+      binwidth = 0.1, 
+      stat="identity") ##,  ylim = c(0.4,0.8)
+```
+
+##Beat the Spread Model
+
+The data was further analyzed using the `glm` (generalized liner model) function to create a predictor model for each of the scenarios below.  These include:
+
+* WIN - Did the Gators win?
+* WINPlus - Did the Gators win by greater than 7 points?
+* WINLess - Did they loose by more than 7 points?
+* BEAT - Did they beat the spread is included in out game schedule above?
+
+Displayed below are the results from the Beat the Spread Model as displayed using the `exp(coef())` function and `confint()` functions.  All of the coefficients are statistically significant except for fear. Even thought the results are statistically significant, I don't feel this is a valuable model.  One issue is that this model shows that whether or not the `BEST_FIT` subjectivity is positive or negative, it adds positively to the model.  Intuitively, it would seem that a negative `BEST_FIT` should add negatively to the model.
+
+```{r BEAT Model, warning=FALSE, echo=FALSE, message=FALSE}
+
+## Create variable for a Win Result
+WinData <- Sentiment %>%
+  mutate(WIN = (UFSCORE > OSCORE)) %>%
+  mutate(WINPlus = (MARGIN >= 7)) %>%
+  mutate(WINLess = (MARGIN <= 7)) %>%
+  mutate(BEAT = (MARGIN > SPREAD))
+
+## Evaluating a win model using BEST_FIT classifications.
+BEAT.model <- glm(BEAT ~  SBEST_FIT + EBEST_FIT, data=WinData, family=binomial)
+exp(coef(BEAT.model))
+confint(BEAT.model)
+
+```
+
+
+## University of Florida
+
+```{r Word Cloud, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig_height=4, fig_width=4}
+
+TweetCloud <- GameTweets$text
+TweetCloud <- gsub("(f|ht)tp(s?)://(.*)[.][a-z0-9/]+", "", TweetCloud)
+TweetCloud <- Corpus(VectorSource(TweetCloud))
+TweetCloud <- tm_map(TweetCloud, PlainTextDocument)
+TweetCloud <- tm_map(TweetCloud, removePunctuation)
+TweetCloud <- tm_map(TweetCloud, removeNumbers)
+TweetCloud <- tm_map(TweetCloud, removeWords, c('the', 'this', stopwords('english')))
+TweetCloud <- tm_map(TweetCloud, removeWords, c('GatorsFB', 'FSUvsUF', 'UFvsSC', 'character0'))
+TweetCloud <- tm_map(TweetCloud, stemDocument)
+wordcloud(TweetCloud, max.words = 100, random.order = FALSE)
+```
+
+**Results:**  A lot more work in cleaning up the text file is needed before this wordcloud accurately represents the text content in the tweets database.  I've included it here because I think it creates a fun introduction to the project and it helped me to work on developing my text analysis skills.
