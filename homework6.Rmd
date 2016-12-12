@@ -1,0 +1,244 @@
+---
+title: "Homework 6 -- Due Monday October 26, 2015"
+author: "Cheryl Calhoun"
+date: "10/19/2015"
+output: html_document
+---
+
+## Assignment
+
+```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+
+## Setup the working environment.
+
+## setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Week 6")
+## setwd("C:/Users/07001412/OneDrive/Education/UF/2015/Fall/EDF6938/Week 6")
+
+library(dplyr)
+## library(ggplot2)
+## library(glmnet)
+```
+
+
+### The Gettysburg Address Text Analysis
+
+This is the entirety of the Gettysburg Address. It is loaded here as a single string.
+
+```{r}
+gettysburg <- "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.
+
+Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.
+
+But, in a larger sense, we can not dedicate -- we can not consecrate -- we can not hallow -- this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us -- that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion -- that we here highly resolve that these dead shall not have died in vain -- that this nation, under God, shall have a new birth of freedom -- and that government of the people, by the people, for the people, shall not perish from the earth."
+
+
+```
+
+We will use `gregexpr()` and `regmatches()` to extract:
+
+**All capitalized words that are not at the beginning of sentences.**
+
+```{r}
+
+## Find all words starting with a capital letter that are not preceeded by a space and either a period or new line character.
+capmatches <- gregexpr("(?<!\\.|\\n)\\s[A-Z][a-z]*", gettysburg, perl="TRUE")
+regmatches (gettysburg, capmatches)
+
+```
+
+**All nine-letter words.**
+
+```{r}
+## Find all words that contain exactly 9 uppercase and or lowercase letters.
+nineletterwords <- gregexpr("[^A-z][A-z]{9}[^A-z]", gettysburg) 
+regmatches (gettysburg, nineletterwords)
+
+```
+
+**The number of times the word "nation" appears.**
+
+```{r}
+## Find all occurences of the word "nation".
+nation <- gregexpr("nation", gettysburg) 
+nation <- regmatches (gettysburg, nation)
+##length(nation)
+```
+
+**The number of sentences.**
+
+```{r}
+## Find the number of sentances using the period "\." as the break between sentances.
+sentances <- gregexpr("\\.", gettysburg) 
+regmatches (gettysburg, sentances)
+## length(sentances)
+
+```
+
+**The number of paragraphs in the phrase.**
+
+```{r}
+## Find the number of paragraphs using the new line character "\n" as the indicator of a break between paragraphs.
+capmatches <- gregexpr("\\n\\n", gettysburg) 
+regmatches (gettysburg, capmatches)
+
+```
+
+**Results:** R is using the end of line character `\n` to end the line and then `\n` again to create a blank line between paragraphs.  Using the end of line character, we can locate two paragraph breaks, which indicates three total paragraphs for the Gettysburg Address.
+
+***
+
+### The Emancipation Proclamation Text Analysis
+
+Loading the Emancipation Proclamation from http://www.acthomas.ca/FSSS/data/emancipation.txt.
+
+```{r}
+emancipation <- readLines ("http://www.acthomas.ca/FSSS/data/emancipation.txt")
+
+## Finding the number of blank lines in this file.
+blanklines <- gregexpr("[^[:blank:]]*$", emancipation) 
+blanklines <- unlist (regmatches (emancipation, blanklines))
+
+```
+
+
+**Results:** There are `r length(emancipation)` lines of text in the file, `r length(emancipation)-length(blanklines)` of these lines are blank.
+
+Use `gregexpr()` and `regmatches()` to extract:
+
+**All capitalized words that are not at the beginning of sentences.**
+
+```{r}
+
+## Find all words starting with a capital letter that are not preceeded by a space and either a period or new line character.
+capmatches <- gregexpr("(?<!\\.|\\n)\\s[A-Z][a-z]+", emancipation, perl="TRUE")
+capmatches <- unlist (regmatches (emancipation, capmatches))
+capmatches
+
+```
+
+
+**All fully capitalized names.**
+
+```{r}
+## Find all fully capitalized names.
+capnames <- gregexpr("([A-Z][A-Z]+ ?[A-Z]?[\\.]? [A-Z][A-Z]+)+", emancipation)
+capnames <- unlist (regmatches (emancipation, capnames))
+capnames
+
+```
+
+
+**All nine-letter words.**
+
+```{r}
+## Find all words containing exactly nine-letters.
+nineletterwords <- gregexpr("[^A-z][A-z]{9}[^A-z]", emancipation) 
+nineletterwords <- unlist(regmatches (emancipation, nineletterwords))
+nineletterwords
+```
+
+**All Saints mentioned by name.**
+
+```{r}
+## Find all Saints mentioned by name. Search for St. at the beginning of the name.
+saints <- gregexpr(" St\\. [A-z]*", emancipation) 
+saints <- unlist(regmatches (emancipation, saints))
+saints
+```
+
+***
+
+## The Top 100 Grossing Movies Analysis
+
+We will use the following data set as a source file for the Top 100 grossing movies: [http://www.boxofficemojo.com/alltime/world/]
+
+Here is an extraction of the HTML code for the second-highest grossing movie:
+
+```
+<tr bgcolor="#f4f4ff"><td align="center"><font size="2">2</font></td>
+<td><font size="2"><a href="/movies/?id=titanic.htm"><b>Titanic</b></a></font></td>
+<td><font size="2">Par.</font></td>
+<td align="right"><font size="2"><b>$2,186.8</b></font></td>
+<td align="right"><font size="2">$658.7</font></td>
+<td align="right"><font size="2">30.1%</font></td>
+<td align="right"><font size="2">$1,528.1</font></td>
+<td align="right"><font size="2">69.9%</font></td>
+<td align="center"><font size="2">1997^</font></td>
+</tr>
+```
+
+```{r}
+## Load the raw HTML in from http://www.acthomas.ca/FSSS/data/boxoffice.html:
+boxoffice <- readLines ("http://www.acthomas.ca/FSSS/data/boxoffice.html")
+
+```
+
+**Results:** There are `r length(boxoffice)` raw lines of text in this file. 
+
+First, we'll find the lines that have the movie titles in them.  We will do this by selecting a piece of text that is unique to the title lines in each case (but not specific to one movie). In this data set, there is an "a href" statement with a URL starting in "/movies/" on the line corresponding to the movie title.  We can use the "movies" string to isolate the title line.
+
+```{r}
+
+## Finding the files that have "movies" in the URL.
+movies <- grep ("movies", boxoffice, value="TRUE")
+```
+
+**Results:** There are `r length(movies)` movies in this file.
+
+With this new vector of 100 lines, we will devise a search term that cuts down to as much of the name of the movie as possible.
+
+```{r}
+## movienames = gregexpr("(?<!<b>)([[:alnum:]]+.*[A-Z][[:alnum:]]+)+", movies, perl="TRUE")
+movienames = gregexpr("[A-z0-9:(&)'.,;\\- ]+(?=<)", movies, TRUE, perl="TRUE")
+movielist <- unlist (regmatches (movies, movienames))[1:100]
+movielist[1:10]
+
+```
+
+We still have a trailing "<" tag which we need to remove. 
+
+```{r}
+movielist <- gsub("<","", movielist)
+movielist[1:10]
+```
+
+**Results:** There are `r length(movielist)` year records (rows) in the `movielist` file.
+
+Now for the year. We'll select a piece of text that is unique to the year line in each case. In this case we are going to look for `<font size = "2">`.  This will help us to eliminate the lines where the movie title contains a year.  We will then look for `[0-9]{4}` to represent the year.
+
+```{r}
+years <- grep ("<font size=\"2\">[0-9]{4}", boxoffice, value="TRUE")
+yearslist = gregexpr("[0-9]{4}", years, perl="TRUE")
+yearlist <- unlist (regmatches (years, yearslist))
+yearlist[1:10]
+```
+
+**Results:** There are `r length(yearlist)` year records (rows) in the `yearslist` file.
+
+Finally, we'll isolate the worldwide gross, by selecting on the `<b>` tags.
+
+```{r}
+gross <- grep ("<b>\\$", boxoffice, value="TRUE")
+grosslist = gregexpr("\\$[0-9]?,?[0-9]{3}\\.[0-9]{1}", gross, perl="TRUE")
+grosslist <- unlist (regmatches (gross, grosslist))
+grosslist[1:10]
+```
+
+**Results:** There are `r length(grosslist)` gross earnings records (rows) in the `grosslist` file.
+
+The final data frame is creatied by combining the three lists. Below is the top 10, the middle 10 (46-55) and the bottom 10 (91-100) on the list.
+
+```{r}
+
+## Creating a data frame from the extracted files. 
+full.movies <- data.frame (movies = movielist,
+                           year = yearlist,
+                           gross = grosslist,
+                           stringsAsFactors=FALSE)
+full.movies[1:10, ]   
+full.movies[46:55, ]  
+full.movies[91:100, ]  
+                           
+```
+
+
