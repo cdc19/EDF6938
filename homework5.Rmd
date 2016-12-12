@@ -1,0 +1,318 @@
+---
+title: "Homework 5 -- Due Monday October 12, 2015"
+author: "Cheryl Calhoun"
+date: "09/29/2015"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Assignment #5
+
+Partly inspired by recent adventures, but connected to everyone's experiences when travelling to Gainesville, we will analyze delays associated with airline travel. In particular, the outcome of interest is whether or not a particular flight was noticeably delayed in its arrival to its destination.
+
+### The Data Set
+Our data set contains the following variables about flights:
+
+- ArrDelay: arrival delay in minutes (negative means an early arrival)
+- Month: month of the flight (1 = January; 12 = December)
+- DayofWeek: day of the week (1 = Monday; 7 = Sunday)
+- AirTime: total time in the air in minutes
+- Distance: total distance of the flight in miles
+- TaxiIn: time taxiing out to the runway in minutes
+- TaxiOut: time taxiing to the gate after landing in minutes
+- DepDelay: departure delay in minutes (negative means an early departure)
+- Diverted: was the plane diverted? 1= Yes, 0 = No
+- Carrier: was there a delay due to the carrier/company? 1 = Yes, 0 = No
+- Weather: was there a delay due to weather? 1 = Yes, 0 = No
+- NAS: was there a delay due to the National Air System? 1 = Yes, 0 = No
+- Security: was there a delay due to security problems? 1 = Yes, 0 = No
+- LateAircraft: was there a delay due to a late aircraft? 1 = Yes, 0 = No
+
+We will begin by loading the data file from its source, `http://www.acthomas.ca/FSSS/data/airline-data.csv`, using the read.table command.  We then review the data set to see how many observations (rows) our data set has and confirm that the column names correspond to the variables above.
+
+```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+
+## Setup the working environment.
+
+## setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Week 6")
+## setwd("C:/Users/07001412/OneDrive/Education/UF/2015/Fall/EDF6938/Week 6")
+
+library(dplyr)
+library(ggplot2)
+library(glmnet)
+```
+
+```{r, eval=TRUE, echo=TRUE, warning=TRUE, message=TRUE}
+## Load airline data set.
+## airline <- read.table ("http://www.acthomas.ca/FSSS/data/airline-data.csv", sep = ",",  header=TRUE)
+airline <- read.csv("C:/Users/cdcal/OneDrive/Education/UF/2015/Fall/EDF6938/Week 6/airline.csv")
+
+## Review contents of airline data set.
+is.data.frame(airline)
+
+## Review column (variable) names and data types for each variable. 
+str(airline)
+summary(airline)
+```
+
+**Results:** The data file, airline-data.csv, is a comma delimeted file.  We used the `read.table()` command with `sep=","` to read the .csv file into a data frame.  Next we confirmed it was a data frame using `is.data.frame()` which returned a value of `r is.data.frame(airline)`. Then we used `str()` to determine there are 4887 observations with 15 total variables, that the column names do in fact correspond to those provided in the assignment, and to determine the data types of each of the variables. We then used `summary()` to get an  overview of the descriptive statistics for the variables contained in the data set.
+
+***
+
+### Converting to factors
+The first step in our analysis, will be to determine which two numerical columns must be converted to factors and use `mutate()` to do so. We will then confirm the counts of these factors using the `summary` function applied only to those two columns.
+
+```{r warning=TRUE}
+
+## Convert variables Month and DayofWeek to data type factor. 
+airline.2 <- airline %>%
+  mutate (Month=as.factor(Month), 
+          DayOfWeek=as.factor(DayOfWeek))
+
+## Review data set to verify conversion worked properly.
+str(airline.2)
+
+## Use summary to look at each of the converted variables to verify new data looks as is expected. 
+summary(airline.2$Month)
+summary(airline.2$DayOfWeek)
+```
+
+**Results:** Used `as.factor()` to convert Month and DayOfWeek to factors, and `mutate()` to replace the original values for Month and DayOfWeek with the new factor variables. Saved new data.frame as `airline.2`. Used `str()` to verify Month and DayOfWeek are now factors. Used 'summary()` to view the levels and frequencies of each level. 
+
+***
+
+### Creating a variable for delays over 10 minutes
+Our objective will be to see if a flight's arrival is delayed by more than 10 minutes. To do this, we will create a new variable in this data frame using `mutate()` corresponding to this True/False outcome.
+
+```{r warning=TRUE}
+
+## Calculate number of flights where arrival delay was more than 10 minutes, assign to new variable `Delayed10`.
+airline.3 <- airline.2 %>%
+  mutate(Delayed10 = (ArrDelay > 10))
+
+## Review data set to verify calculation worked correctly.
+str(airline.3)
+summary(airline.3$Delayed10)
+
+```
+
+**Results:** Created new variable `Delayed10` to indicate whether or not a flight's arrival is delayed by more than 10 minutes. Saved new data.frame as `airline.3`. Used `str()` to verify the new variable has been created, and view the resulting data type.  Used `summary()` to view descriptive statisticss and verify the new variable was calculated correctly.  `Delayed10` now contains logical data indicating true for flights with delays > 10 minutes, and false for flights with delays <= 10 minutes.
+
+***
+
+### Fitting the binary linear model
+Now we will use `glm()` to fit a binary linear model to the Delayed10 outcome.  We will include all variables initially, and then look at whether or not any variables can be omitted if it is determined they have no bearing on the analysis. 
+
+```{r warning=TRUE}
+
+## Use `glm` to fit a binary linear model to `Delayed10` with all variables in the data set
+delayed.model <- glm (Delayed10 ~ Month + DayOfWeek + AirTime + Distance + TaxiIn +  TaxiOut + DepDelay + Carrier + Weather + NAS + Security + LateAircraft - 1, data=airline.3, family=binomial)
+
+## View resulting model and summary statistics.
+summary(delayed.model)
+
+```
+
+**Results:** The resulting model shows 6 variables which are statistically significant. One of these is `Month` which appears as all 12 months. `DayOfWeek` is not  producing statistically significant results. `Diverted` has been eliminated because it does not seem to contain anysignificant data as all observations = 0.
+
+**Note:** `glm` creates a warning "## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred" when run for "family=binomial".  This error is generated due to a condition where one or more of the fitted probabiites are extremely close to zero or one.  This is not a fatal flaw but should be noted.
+
+***
+### Standardizing the variables
+Now lets look at the standardized model to see if we can improve the fit.  We will create a new data frame that standardizes the variables in question by subtract their mean and divide by their standard deviation. We will use `qplot` to look at the resulting standardized variables to confirm that they appear to have the correct distributions.
+
+```{r warning=TRUE}
+
+## Convert AirTime, Distance, TaxiIn, TaxiOut and DepDelay to standardized values.
+airline.zs <- airline.3 %>% 
+  mutate(AirTime = (AirTime - mean(AirTime)) / sd(AirTime)) %>%  
+  mutate(Distance = (Distance - mean(Distance)) / sd(Distance)) %>%
+  mutate(TaxiIn = (TaxiIn - mean(TaxiIn)) / sd(TaxiIn))  %>%
+  mutate(TaxiOut = (TaxiOut - mean(TaxiOut)) / sd(TaxiOut))  %>%
+  mutate(DepDelay = (DepDelay - mean(DepDelay)) / sd(DepDelay))
+
+# View resulting data set and summary statistics to verify standardized values appear correct.
+str(airline.zs)
+summary(airline.zs)
+
+## Plot two of the standardized variable to verify they are in the range of standardized scores.
+qplot(airline.zs$AirTime, geom="density")
+qplot(airline.zs$Distance, geom="density")
+
+```
+
+**Results:**  We now have a new data frame, airline.zs, which contains the standardized z scores for each non 0/1 predictor. The resulting z scores produce plots with distributions clustered around "0", verifying the z scores were correctly calculated.
+
+***
+## Fitting the binary linear model with standardized data
+Again, we will use `glm()` to fit a binary linear model to the Delayed.10 outcome using the new data set which contains standardized variables for predictors..  We will include all variables initially, and then look at whether or not any variables can be omitted if it is determined they have no bearing on the analysis. but with these standardized variables for predictors instead. Which variables have the greatest effect size in each regression?
+
+```{r warning=TRUE}
+
+## Use `glm` to fit a binary linear model to Delayed10 using the standardized variables in the data set
+delay.model.zs <- glm (Delayed10 ~ Month + DayOfWeek + AirTime + Distance + TaxiIn + TaxiOut + DepDelay + Carrier + Weather + NAS + Security + LateAircraft -1, data=airline.zs, family=binomial)
+
+## View resulting model and summary statistics.
+##delay.model.zs
+summary(delay.model.zs)
+```
+
+**Results:** The resulting model shows 6 variables which are statistically significant. One of these is `Month` which appears as all 12 months. `DayOfWeek` is not  producing statistically significant results. `Diverted` has been eliminated because it does not seem to contain anysignificant data as all observations = 0. DepDelay has the greatest effect size in both models.
+
+**Note:** `glm` creates a warning "## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred" when run for "family=binomial".  This error is generated due to a condition where one or more of the fitted probabiites are extremely close to zero or one.  This is not a fatal flaw but should be noted.
+
+***
+
+###Creating the design/predictors matrixs
+Now we will produce the design/predictors matrix using the `model.matrix()` function. We will verify the number of columns corresponds to the number of coefficients in your previous `glm()` output.
+
+```{r warning=TRUE}
+## Produce the design/predictors matrix for arline.delays.zs.
+delay.matrix <- model.matrix(~ 0 + Month + DayOfWeek + AirTime + Distance + TaxiIn + TaxiOut + DepDelay + Carrier + Weather + NAS + Security + LateAircraft, airline.zs)
+
+## Verify the number of columns in airline.delay.matrix corresponds to the number of coefficients in the previous `glm()` output.
+length(delay.model.zs$coefficients)
+dim(delay.matrix)[2]
+```
+
+**Results:** The delay.matrix has the same number of columns (`r dim(delay.matrix)[2]`) as the number of coefficients in the previous 'delay.model.zs' (`r length(delay.model.zs$coefficients)`).
+
+***
+
+### Lasso effect
+We will use `cv.glmnet()` with the Lasso (`alpha=1`) to run a penalized linear model for quality as the outcome with all predictors as previously done, for this data frame. 
+
+```{r warning=TRUE}
+
+##Use cv.glmnet() with Lasso (`alpha=1`) to run the penalized lineral model for delayed.10.
+## First Validation Step
+delay.model.cv = cv.glmnet (delay.matrix, airline.zs$Delayed10, alpha=1 )
+picked <- which (delay.model.cv$lambda == delay.model.cv$lambda.min)
+plot(delay.model.cv)
+```
+
+**Results:** This plot shows the cross-validation mean squared error (MSE) as a function of log(lambda)  curve (red dotted line), including the upper and lower standard deviation curves. The dotted lines represent lambda.min and lambda.min plus one standard error.  As lambda gets smaller, the curve flattens out. The numbers across the top of the plot indicate how many non-zero predictors are in the model at each level of lambda.
+
+```{r, eval=TRUE, warning=TRUE}
+## The `lambda` that produces the smallest cross-validated error is:
+delay.model.cv$lambda.min
+## The cross validated error is:
+delay.model.cv$cvm[picked]
+
+## How much of a reduction is this in cross-validated error from the basic fit model in Question 3?
+summary(delay.model.zs)
+
+```
+
+**Results:** The `lambda` that produces the smallest value is [`r picked`] = `r delay.model.cv$lambda.min`.  The cross-validated error for red.quality.cv [`r picked`] is `r delay.model.cv$cvm[picked]`. 
+
+***
+### Ridge penalty
+Let's run `cv.glmnet()` again, but now using the Ridge penalty (`alpha=0`).
+
+```{r warning=TRUE}
+
+##Use cv.glmnet() with Lasso (`alpha=1`) to run the penalized lineral model for delayed.10.
+## First Validation Step
+delay.model.cv2 = cv.glmnet (delay.matrix, airline.zs$Delayed10, alpha=0 )
+picked2 <- which (delay.model.cv2$lambda == delay.model.cv2$lambda.min)
+plot(delay.model.cv2)
+```
+
+**Results:** This plot shows the cross-validation mean squared error (MSE) as a function of log(lambda)  curve (red dotted line), including the upper and lower standard deviation curves. The dotted lines represent lambda.min and lambda.min plus one standard error.  As lambda gets smaller, the curve flattens out. The numbers across the top of the plot indicate how many non-zero predictors are in the model at each level of lambda.
+
+```{r, eval=TRUE, warning=TRUE}
+## The `lambda` that produces the smallest cross-validated error is:
+delay.model.cv2$lambda.min
+## The cross validated error is:
+delay.model.cv2$cvm[picked2]
+
+
+## How much of a reduction is this in cross-validated error from the basic fit model in Question 3?
+## summary(delay.model.zs)
+## delay.model.zs
+
+```
+
+**Results:** The `lambda` that produces the smallest value is [`r picked2`] = `r delay.model.cv2$lambda.min`.  The cross-validated error for red.quality.cv [`r picked2`] is `r delay.model.cv$cvm[picked2]`. 
+
+***
+### Balancing both penalties
+Let's run `cv.glmnet` one more time, but now using an even combination of the two penalties (`alpha=0.5`).
+
+```{r warning=TRUE}
+
+##Use cv.glmnet() with Lasso (`alpha=1`) to run the penalized lineral model for delayed.10.
+## First Validation Step
+delay.model.cv3 = cv.glmnet (delay.matrix, airline.zs$Delayed10, alpha=0.5 )
+picked3 <- which (delay.model.cv3$lambda == delay.model.cv3$lambda.min)
+plot(delay.model.cv3)
+
+```
+
+**Results:** This plot shows the cross-validation mean squared error (MSE) as a function of log(lambda)  curve (red dotted line), including the upper and lower standard deviation curves. The dotted lines represent lambda.min and lambda.min plus one standard error.  As lambda gets smaller, the curve flattens out. The numbers across the top of the plot indicate how many non-zero predictors are in the model at each level of lambda.
+
+```{r warning=TRUE}
+
+## The `lambda` that produces the smallest cross-validated error is:
+delay.model.cv3$lambda.min
+## The cross validated error is:
+delay.model.cv3$cvm[picked3]
+
+## How much of a reduction is this in cross-validated error from the basic fit model in Question 3?
+## summary(delay.model.zs)
+## delay.model.zs
+
+```
+
+**Results:** The `lambda` that produces the smallest value is [`r picked3`] = `r delay.model.cv$lambda.min`.  The cross-validated error for red.quality.cv [`r picked3`] is `r delay.model.cv$cvm[picked3]`. The output from the `glm` generated model does not show adjusted r-squared for comparison.
+
+***
+### Finding the smallest lambda
+Now lets look at each of our models to determine which one contain the the smallest value of `cvm` for the `lambda` we selected. 
+
+```{r warning=TRUE}
+
+delay.model.cv$cvm[picked]
+delay.model.cv2$cvm[picked2]
+delay.model.cv3$cvm[picked3]
+
+```
+
+**Results:** The smallest `cvm` value comes from delay.model.cv3[`r picked3`] at `r delay.model.cv3$cvm[picked3]`.
+
+***
+### Fitting the "shrinkage model"
+We will use `glmnet()` to fit the "shrinkage" model to this data set using `delay.model.cv3$lambda` which gave us the smallest `cvm`. We will use the same `lambda` series as outputted in the previous steps for each mode to look at the `beta` matrix that corresponds to this ideal `lambda`. 
+
+```{r warning=TRUE}
+airline.delay.model = glmnet (delay.matrix, airline.zs$Delayed10, lambda = delay.model.cv3$lambda)
+plot(airline.delay.model, label = TRUE)
+```
+
+**Results:** Each curve in the plot represents a coefficient in the model.  As the norm increases the coefficients deviate from 0. The numeric scale across the top indicates how many coefficients have deviated from 0.
+
+```{r}
+airline.delay.model$beta[,picked3]
+
+```
+
+**Results:** In this step we calculated the model which corresponds to the minimum `lambda` identified in step 7. The resulting plot and betas are shown. The estimates of `airline.delay.model$beta` for `Month6`, `Month7`, `Month8`, `Month9`, `Month12`, `DaysOfWeeks2`, and `DaysOfWeeks3` have shrunken to zero. 
+
+***
+### Comparing the unshrunken model to the shrunken model
+Finally we will plot the coefficient estimates from the unshrunken models (`delay.model.zs`) compared to the ideal shrunken model (`airline.delay.model`),to demonstrate whether this shrunken estimation produced a noticeably different response. 
+
+```{r warning=TRUE}
+qplot (delay.model.zs$coefficients, airline.delay.model$beta[,picked3], main="Coefficient estimates from shrunken vs. unshrunken model")
+
+```
+
+**Results:** In this step we ploted the original coefficient estimates from `delay.model.zs` to the coefficient estimates from the shrunken model `airline.delay.model$beta[,picked3]`.  There appear to be some differences in coefficients. If there were no differences, the plot would create a straight line.  
+
+
+
+
+
+
