@@ -1,0 +1,441 @@
+---
+title: "Homework 4 -- Due Monday October 5, 2015"
+author: "Cheryl Calhoun"
+date: "09/29/2015"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Add your code blocks to this document and alter the Author name to yours. Your submission will consist of your own R Markdown file plus the compiled HTML version of the document.
+
+I encourage you to submit your completed version as soon as possible. We will grade this quickly so that any opportunities for a regrade can be done quickly.
+
+## Assignment
+
+For this assignment we're going to take two data sets with identical structural properties, except for one major difference: one is a data set of red wines, the other of white. Your goal will be to come up with the best predictors of quality for a wine given the scientific characteristics observed. We obtained the data from the UCI Machine Learning Repository (https://archive.ics.uci.edu/ml/datasets/Wine+Quality) but pre-processed it a little for the class.
+
+```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+
+## Seting up the session.
+## setwd("C:/Users/07001412/OneDrive/Education/UF/2015/Fall/EDF6938/Week 5")
+## setwd("C:/Users/Cheryl/OneDrive/Education/UF/2015/Fall/EDF6938/Week 5")
+
+library(dplyr)
+library(ggplot2)
+library(glmnet)
+
+```
+
+1. Load the data file `wine-tests.RData` into your workspace. Note that one of R's nice features is that you can identify the variables contained in an RData file by wrapping the `load()` function in a `print()` function. What variables are contained within? Confirm that that they are indeed data frames.
+
+```{r, eval=TRUE}
+print(load("wine-tests.RData"))
+## Determine that these are `red` is a data frame, identify the variables within, and review the summary data.
+is.data.frame(red)
+str(red)
+summary(red)
+
+
+
+##  Determine that these are `white` is a data frame, identify the variables within, and review the summary data.
+is.data.frame(white)
+str(white)
+summary(white)
+
+```
+
+***
+
+**Results:** There are two data sets. One for red wine, and one for white wine. There are 1,599 observations in the red wine data set, and 4,898 observations in the white wine data set. Both data sets have 12 variables, one dependent variable: "quality" which is an integer, and 11 independent or predictor variables: fixed.acidity, volatile.acidity, citric.acid, residual.sugar, chlorides, free.sulfur.dioxide, total.sulfur.dioxide, density, pH, sulphates, and alcohol, all of which are numerical values.  
+
+total.sulfur.dioxide in the red table has a max value of 289, there could be an outlier here. free.sulfur.dioxide in the white table has a max value of 289, again this could be an outlier.
+
+***
+
+2. For each of the wine types (red and white), plot the outcome -- `quality` -- against some of the predictors. You should have six total plots.
+
+Comment on the structure of your plots. Are there any relations between the variables that you find worth highlighting?
+
+a) Use volatile acidity as the predictor and density as the color.
+```{r, eval=TRUE}
+
+ggplot(red, aes(x=quality, y=volatile.acidity, colour=density)) + 
+  geom_point() + stat_smooth(method=lm) + 
+  ggtitle ("Volatile Acidity as a predictor of Red Wine Quality") +
+  xlab("Wine Quality") +
+  ylab("Volitile Acidity") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        plot.title=element_text(size=16, face="bold"))
+```
+
+***
+
+**Results:**  It appears that as volatile acidity increases, red wine quality decreases. Density seems to be distributed evenly as compared to volitile acidity.
+
+***
+
+```{r, eval=TRUE}
+
+
+ggplot(white, aes(x=quality, y=volatile.acidity, colour=density)) + 
+  geom_point() + stat_smooth(method=lm) + 
+  ggtitle ("Volatile Acidity as a predictor of White Wine Quality") +
+  xlab("Wine Quality") +
+  ylab("Volitile Acidity") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        plot.title=element_text(size=16, face="bold"))
+
+```
+
+***
+
+**Results:** It appears that as volatile acidity increases, white wine quality decreases. This affect seems to be more dramatic in red wines versus white wines.  It also appears, based on the color of the dots, that white wine may have lower density than red wine.
+
+***
+
+b) Use density as the predictor and alcohol as the color.
+```{r, eval=TRUE}
+ggplot(red, aes(x=quality, y=density, colour=alcohol)) + 
+  geom_point() + stat_smooth(method=lm) + 
+  ggtitle ("Density as a predictor of Red Wine Quality") +
+  xlab("Wine Quality") +
+  ylab("Density") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        plot.title=element_text(size=16, face="bold"))
+```
+
+***
+
+**Results:** It appears that as density decreases, wine quality increases. I don't really see any identifiable patterns in the effects of alcohol on this chart.
+
+***
+
+```{r, eval=TRUE}
+
+ggplot(white, aes(x=quality, y=density, colour=alcohol)) + 
+  geom_point() + stat_smooth(method=lm) + 
+  ggtitle ("Density as a predictor of White Wine Quality") +
+  xlab("Wine Quality") +
+  ylab("Density") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        plot.title=element_text(size=16, face="bold"))
+
+```
+
+***
+
+**Results:** It appears that as density increases, wine quality decrease. White wine has a couple of outliers, one with density at almost 1.04, and another around 1.01, that are skewing the scale of the white wine chart.  It might be helpful to find and remove this outlier to see how the remaining data responds.
+
+***
+
+c) Use total sulfur dioxide as the predictor and sulphates as the color.
+```{r, eval=TRUE}
+ggplot(red, aes(x=quality, y=free.sulfur.dioxide, colour=sulphates)) + 
+  geom_point() + stat_smooth(method=lm) + 
+  ggtitle ("Sulfur Dioxide as a predictor of Red Wine Quality") +
+  xlab("Wine Quality") +
+  ylab("Sulfur Dioxide") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        plot.title=element_text(size=16, face="bold"))
+```
+
+***
+
+**Results:** It appears that sulfur dioxide has a moderate impact on red wine quality. I can't really disern any affects of sulphates from this chart.
+
+***
+
+```{r, eval=TRUE}
+
+ggplot(white, aes(x=quality, y=free.sulfur.dioxide, colour=sulphates)) + 
+  geom_point() + stat_smooth(method=lm) + 
+  ggtitle ("Sulfur Dioxide as a predictor of White Wine Quality") +
+  xlab("Wine Quality") +
+  ylab("Sulfur Dioxide") +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14),
+        plot.title=element_text(size=16, face="bold"))
+
+```
+
+***
+
+**Results:**  It does not appear that sulfur dioxide has an affect on white wine quality.  Again, it appears that white wine has an outlier point that is skewing the chart scale. If the outliers are removed, and the chart re-generated, we may see a larger affect in the white wine chart. 
+
+***
+
+3. Now that you have explored the data, perform two linear regressions using `lm()` on quality for both whites and reds separately. Include all variables as predictors, listing them out in sequence for each command statement. Which variable appears to have the most statistically significant outcome?
+
+```{r, eval=TRUE}
+
+## Linear regression for red wine, using quality as the dependent variable. This model contains all 11 predictor variables.
+
+red.model <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol - 1, data=red)
+
+## Print the summary of the red.model.
+## red.model
+summary(red.model)
+
+```
+
+***
+
+**Results:**  For red wine, `alcohol` has the most statistically significant outcome with the largest absolute t-value at 17.217, p < 2e-16. 
+
+***
+
+```{r, eval=TRUE}
+
+## Linear regression for white wine, using quality as the dependent variable.  This model contains all 11 predictor variables.
+
+white.model <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol - 1, data=white)
+
+## Print the summary of the white.model. 
+## white.model
+summary(white.model)
+
+```
+
+***
+
+**Results:**  For white wine, `alcohol` has the most statistically significant outcome with the largest absolute t-value at 32.880, p < 2e-16.
+
+***
+
+4. Create two new data frames for `red` and `white`. Use `mutate()` to standardize the variables in question: subtract their mean and divide by their standard deviation, in that order. Plot two variables from each to confirm that they appear to have the correct distributions.
+
+```{r, eval=TRUE}
+## Create a new dataframe with standardized "z" scores for all independent variables. Assign the "z" scores to the original variable names to retain the original size of the data frame.
+
+red.zs <- red %>% 
+  mutate(fixed.acidity = (fixed.acidity - mean(fixed.acidity)) / sd(fixed.acidity)) %>%  
+  mutate(volatile.acidity = (volatile.acidity - mean(volatile.acidity)) / sd(volatile.acidity)) %>%  
+  mutate(citric.acid = (citric.acid - mean(citric.acid)) / sd(citric.acid)) %>%  
+  mutate(residual.sugar = (residual.sugar - mean(residual.sugar)) / sd(residual.sugar)) %>%  
+  mutate(chlorides = (chlorides - mean(chlorides)) / sd(chlorides)) %>%  
+  mutate(free.sulfur.dioxide = (free.sulfur.dioxide - mean(free.sulfur.dioxide)) / sd(free.sulfur.dioxide)) %>%  
+  mutate(total.sulfur.dioxide = (total.sulfur.dioxide - mean(total.sulfur.dioxide)) / sd(total.sulfur.dioxide)) %>%
+  mutate(density = (density - mean(density)) / sd(density)) %>%  
+  mutate(pH = (pH - mean(pH)) / sd(pH)) %>%  
+  mutate(sulphates = (sulphates - mean(sulphates)) / sd(sulphates)) %>% 
+  mutate(alcohol = (alcohol - mean(alcohol)) / sd(alcohol)) %>%
+  mutate(quality = (quality - mean(quality)) / sd(quality))
+
+## Display the new data frame.
+
+str(red.zs)
+qplot(red.zs$fixed.acidity, geom="density")
+qplot(red.zs$volatile.acidity, geom="density")
+
+```
+
+***
+
+**Results:**  We now have a new data frame, red.zs, which contains the standardized z scores for each predictor. The resulting z scores for `fixed.acidity` and `volatile.acidity` produce plots with distributions clustered around "0", verifying the z scores appear to be correctly calculated.
+
+***
+
+```{r, eval=TRUE}
+
+
+## Create the standardized "z" scores for white wine.
+
+white.zs <- white %>% 
+  mutate(fixed.acidity = (fixed.acidity - mean(fixed.acidity)) / sd(fixed.acidity)) %>%  
+  mutate(volatile.acidity = (volatile.acidity - mean(volatile.acidity)) / sd(volatile.acidity)) %>%  
+  mutate(citric.acid = (citric.acid - mean(citric.acid)) / sd(citric.acid)) %>%  
+  mutate(residual.sugar = (residual.sugar - mean(residual.sugar)) / sd(residual.sugar)) %>%  
+  mutate(chlorides = (chlorides - mean(chlorides))/sd(chlorides)) %>%  
+  mutate(free.sulfur.dioxide = (free.sulfur.dioxide - mean(free.sulfur.dioxide))/sd(free.sulfur.dioxide)) %>%  
+  mutate(total.sulfur.dioxide = (total.sulfur.dioxide - mean(total.sulfur.dioxide))/sd(total.sulfur.dioxide)) %>%
+  mutate(density = (density - mean(density))/sd(density)) %>%  
+  mutate(pH = (pH - mean(pH))/sd(pH)) %>%  
+  mutate(sulphates = (sulphates - mean(sulphates))/sd(sulphates)) %>% 
+  mutate(alcohol = (alcohol - mean(alcohol))/sd(alcohol)) %>%
+  mutate(quality = (quality - mean(quality)) / sd(quality))
+
+## Display the data frame.
+
+str(white.zs)
+qplot(white.zs$citric.acid, geom="density")
+qplot(white.zs$residual.sugar, geom="density")
+
+```
+
+***
+
+**Results:**  We now have a new data frame, white.zs, which contains the standardized z scores for each predictor. The resulting z scores for `density` and `residual.sugar` produce plots with distributions clustered around "0", verifying the z scores appear to be correctly calculated.
+
+***
+
+5. Repeat Question 3, but with these standardized variables for predictors instead. Which variables have the greatest effect size in each regression?
+
+```{r, eval=TRUE}
+
+## Linear regression for red wine based on z scores, using quality as the dependent variable.  This model contains all 11 predictor variables.
+
+red.zs.model <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol - 1, data=red.zs)
+
+## Print summary of red.zs.model.
+## red.zs.model
+summary(red.zs.model)
+
+## Linear regression for white wine based on z scores, using quality as the dependent variable.  This model contains all 11 predictor variables.
+
+white.zs.model <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol - 1, data=white.zs)
+
+## Print summary of white.zs.model.
+## white.zs.model
+summary(white.zs.model)
+```
+
+***
+
+**Results:**  Alcohol has the largest effect size in the red.zs.model, and density has the largest effect size in the white.zs.model with 0.29433, and -0.449486 respectively.
+
+***
+
+6. Produce the design/predictors matrix for each of `red` and `white`. You can use the `select` function from dplyr (as long as you use `as.matrix()` next), the `model.matrix()` function, or some other method of your choosing. Verify the number of columns corresponds to the number of coefficients in your previous `lm()` outputs.
+
+```{r, eval=TRUE}
+
+## Create quality matrix for red wine
+red.quality.matrix <- model.matrix(~ 0 + fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol, red.zs)
+head(red.quality.matrix, 2)
+
+
+## Check to see if the number of columns in red.quality.matrix corresponds to the number of coefficients in the previous 'lm()' output.
+length(red.zs.model$coefficients)
+dim(red.quality.matrix)[2]
+```
+
+***
+
+**Results:**  The resulting red.quality.matrix has the same number of columns as the number of coefficients in the previous `lm()` output.
+
+***
+
+```{r, eval=TRUE}
+## Create quality matrix for white wine
+white.quality.matrix <- model.matrix(~ 0 + fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol, white.zs)
+head(white.quality.matrix, 2)
+
+## Check to see if the number of columns in white.quality.matrix corresponds to the number of coefficients in the previous 'lm()' output.
+length(white.zs.model$coefficients)
+dim(white.quality.matrix)[2]
+```
+
+***
+
+**Results:**  The resulting `white.quality.matrix` has the same number of columns (`r dim(white.quality.matrix)[2]`) as the number of coefficients (`r length(white.zs.model$coefficients)`) in the previous `lm()` output.
+
+***
+
+7. Use `cv.glmnet()` with the Lasso (`alpha=1`, by default) to run the penalized linear model for quality as the outcome with all your predictors as previously done, for each of the two data frames. What values for `lambda` produce the smallest cross-validated error in each case? How much of a reduction is this in cross-validated error from the basic model you fit in Question 3 (corresponding to `lambda = 0`)?
+
+
+```{r, eval=TRUE}
+##cv.glmnet() calculations for red wine
+## First Validation Step
+red.quality.cv = cv.glmnet (red.quality.matrix, red.zs$quality, alpha=1 )
+plot(red.quality.cv)
+```
+
+**Results:** This plot shows the cross-validation mean squared error (MSE) as a function of log(lambda)  curve (red dotted line), including the upper and lower standard deviation curves. The dotted lines represent lambda.min and lambda.min plus one standard error.  As lambda gets smaller, the curve flattens out. The numbers across the top of the plot indicate how many non-zero predictors are in the model at each level of lambda.
+
+```{r, eval=TRUE}
+
+rpicked <- which (red.quality.cv$lambda == red.quality.cv$lambda.min)
+rpicked
+
+## The `lambda` that produces the smallest cross-validated error is:
+red.quality.cv$lambda.min
+## The cross validated error is:
+red.quality.cv$cvm[rpicked]
+
+## How much of a reduction is this in cross-validated error from the basic fit model in Question 3?
+summary(red.zs.model)
+
+```
+
+***
+
+**Results:** The `lambda` that produces the smallest value is [`r rpicked`] = `r red.quality.cv$lambda.min`.  The cross-validated error for red.quality.cv [`r rpicked`] is `r red.quality.cv$cvm[rpicked]`. This can be compared to the adjusted r-squared (0.3561) as listed above in the red.zs.model summary.
+
+
+***
+
+```{r, eval=TRUE}
+##cv.glmnet() calculations for white wine
+## First Validation Step
+white.quality.cv = cv.glmnet (white.quality.matrix, white.zs$quality, alpha=1)
+plot(white.quality.cv)
+
+
+```
+
+**Results:** This plot shows the cross-validation mean squared error (MSE) as a function of log(lambda)  curve (red dotted line), including the upper and lower standard deviation curves. The dotted lines represent lambda.min and lambda.min plus one standard error.  As lambda gets smaller, the curve flattens out. The numbers across the top of the plot indicate how many non-zero predictors are in the model at each level of lambda.
+
+```{r, eval=TRUE}
+
+## Find the minium value of lambda.
+wpicked <- which (white.quality.cv$lambda == white.quality.cv$lambda.min)
+wpicked
+##The `lambda` that produces the smallest value is:"
+white.quality.cv$lambda.min
+##The cross validated error is:
+white.quality.cv$cvm[wpicked]
+
+## How much of a reduction is this in cross-validated error from the basic fit model in Question 3?
+summary(white.zs.model)
+```
+
+***
+
+**Results:** The `lambda` that produces the smallest value is [`r wpicked`] = `r red.quality.cv$lambda.min`.  The cross-validated error for white.quality.cv [`r wpicked`] is `r white.quality.cv$cvm[wpicked]`.  This can be compared to the adjusted r-squared (0.2803) as listed above in the red.zs.model summary.
+
+***
+
+8. Use `glmnet()` to fit the "shrinkage" model to each data set. Use the same `lambda` series as outputted in the previous steps for each model. Note the column in the `beta` matrix that corresponds to the ideal `lambda`. Do any of the estimates for `beta` in each model get shrunk all the way to zero? 
+
+```{r, eval=TRUE}
+## Calculations for red wine.
+red.quality = glmnet (red.quality.matrix, red.zs$quality, lambda = red.quality.cv$lambda)
+plot(red.quality, label = TRUE)
+red.quality$beta[,rpicked]
+
+## Calculations for white wine.
+white.quality = glmnet (white.quality.matrix, white.zs$quality, lambda = white.quality.cv$lambda)
+plot(white.quality)
+white.quality$beta[,wpicked]
+
+```
+
+***
+
+**Results:** In this step we calculated the model which corresponds to the minimum `lambda` identified in step 7. The resulting plot and betas are shown. The estimates of `red.quality$beta` for `fixed.acidity`, `citric.acid`, and `density` have shrunken to zero. The estimates of `white.quality$beta` for `citric.acid` have shrunken to zero.
+
+***
+
+9. Plot the coefficient estimates from the unshrunken models (step 3) compared to the ideal shrunken models (step 8) to demonstrate whether this shrunken estimation produced a noticeably different response. 
+
+```{r, eval=TRUE}
+qplot (red.zs.model$coefficients, red.quality$beta[,rpicked], main="Coefficient estimates from shrunken vs. unshrunken model")
+
+qplot (white.zs.model$coefficients, white.quality$beta[,wpicked], main="Coefficient estimates from shrunken vs. unshrunken model")
+
+```
+
+***
+
+**Results:** In this step we ploted the original coefficient estimates from step 3 to the coefficient estimates from the shrunken model in step 8.  There appear to be some differences in coefficients. If there were no differences, the plot would create a straight line.  
+
+***
+
+
