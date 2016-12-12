@@ -1,0 +1,386 @@
+---
+title: "Homework 9 -- Due Monday November 16, 2015"
+author: "Cheryl Calhoun"
+date: "11/015/2015"
+output: html_document
+---
+
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+## Setting up the work environment.
+##setwd("C:/Users/07001412/OneDrive/Education/UF/2015/Fall/EDF6938/Week 11")
+library("dplyr") ##, lib.loc="~/R/win-library/3.2")
+
+## Setting up for Twitter API access.
+## Install `twitterR` and supporting packages if not already installed.
+##install.packages("twitteR")
+##install.packages("base64enc")  ## This solved some of my problems, so you should install it too.
+##download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile="cacert.pem") ##-- this was suggested if you are running a Windows machine.
+
+## Loading twitterR and base64end libraries.
+library("twitteR") ##, lib.loc="~/R/win-library/3.2")
+library("base64enc") ##, lib.loc="~/R/win-library/3.2")
+
+## Loading twitter API and Access keys.
+source ("twitter-access-keys.R")
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+
+## Setting up for sentiment analysis. Install packages if necessary.
+## First, install an alternate repository.
+## install.packages("Rstem", repos = "http://www.omegahat.org/R", type="source")
+library(sentiment)
+
+## Second, we can use packages hosted on GitHub.  Install packages if necessary.
+## install.packages("devtools")
+## install_github ("timjurka/sentiment/sentiment")
+library(devtools)
+
+##download.file(url="http://cran.r-project.org/bin/windows/Rtools/")"
+##install.packages("RCurl")
+library(RCurl)
+```
+
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+## Loading variables.
+
+## Setting search patterns for usertags and hashtags.
+usertag <- "@[A-z_0-9]+"
+hashtag <- "#[A-z0-9]+"
+
+## Load the subjectivity and emotions files from (https://github.com/timjurka/sentiment/tree/master/sentiment)
+subjectivity <- read.csv ("http://www.acthomas.ca/FSSS/data/subjectivity.csv", header=FALSE)
+emotions <- read.csv ("http://www.acthomas.ca/FSSS/data/emotions.csv", header=FALSE)
+
+```
+
+###Gathering data on Football related tweets at the University of Florida
+
+Context: Every member of the class was assigned a school in the Southeastern Conference (SEC) as specified in the spreadsheet located at: [https://docs.google.com/spreadsheets/d/1IKRXc0hN1C9e5S845LmgY-rlLdCQ1xOQrI3thxKIgVA/edit?usp=sharing]
+
+For this exercise, data will be captured from twitter each week, saved to a file, and reload from that file as needed. This will ensure both reproducibility and ease of use on Twitter's servers.
+
+The original plan was to use geolocation to find our tweets.  To do this, we need to find the latitude and longitude of our school on Google Maps. (This is a manual process of looking up the coordinates.) The latitude and longitude of Ben Hill Griffin stadium at the University of Florida is: 29.649898, -82.348429. Now, we can use these coordinates to extract a sample of tweets from near that location.  For this exercise, we will use a 5 mile radius.  
+
+Unfortunately, geolocation does not seem to work, so we will use the most common hasgtag associated with Florida Sports and Florida Football.  After some initial data exploration, the #GoGators hashtag is selected.
+
+11/14/15 Update:  After review of tweets obtained using the #GoGators hashtag, it is apparant that this data set includes tweets from all Gator sports as well as many other miscellanous tweets.  Futher research through twitter and watching the game confirms there is a game specific hashtag each week.  The game specific hashtag for Game 10 is #UFvsSC.  I will use this hashtag to gather the tweets for the S. Carolina game.  I will also gather tweets using the #GoGators hashtag as a comparison.
+
+There are four remaining games this season. They are:
+
+Game #  | Date   | Opponent      | Location
+--------|--------|---------------|-------------
+Game 9  | Nov 7  | Vanderbilt    | Gainesville
+Game 10 | Nov 14 | S. Carolina   | Columbia
+Game 11 | Nov 21 | Fl. Atlantic  | Gainesville
+Game 12 | Nov 28 | Florida State | Gainesville
+
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+
+## Collect weekly tweets beginning Thursday before game and ending on Sunday after the game. Store tweets in a .csv file.  This code will be executed on a weekly basis until we have gathered data for the remaining 4 games of the season. 
+
+##The original geolocation code.
+## Florida <- searchTwitter('', geocode='29.649898,-82.348429,5mi', since="2015-11-05", until="2015-11-09", n=10000)
+
+##Collect data for Game 9 using the updated #GoGators hashtag code.
+##Florida9 <- searchTwitter("#GoGators", since="2015-11-05", until="2015-11-07", n=10000, retryOnRateLimit=120)
+##Florida9.df <- rbind_all (lapply (Florida9, function(rr) rr$toDataFrame()))
+##write.csv(Florida9.df, file = "Vanderbilt2.csv")
+
+## Collect data for game 10 using both #GoGators and #UFvsSC. The #GoGators data will be stored to compare with results from #UFvsSC data.
+##FloridaGG <- searchTwitter("#GoGators", since="2015-11-12", until="2015-11-14", n=10000, retryOnRateLimit=120)
+##FloridaGG.df <- rbind_all (lapply (FloridaGG, function(rr) rr$toDataFrame()))
+##write.csv(FloridaGG.df, file = "CarolinaGG.csv")
+
+## Florida10 <- searchTwitter("#UFvsSC", since="2015-11-12", until="2015-11-16", n=10000, retryOnRateLimit=120)
+## Florida10.df <- rbind_all (lapply (Florida10, function(rr) rr$toDataFrame()))
+## write.csv(Florida10.df, file = "Carolina.csv")
+
+## Collect data for game 11
+##Florida11 <- searchTwitter("#GoGators", since="2015-11-19", until="2015-11-23", n=10000)
+##Florida11.df <- rbind_all (lapply (Florida11, function(rr) rr$toDataFrame()))
+##write.csv(Florida11.df, file = "FLAtl.csv")
+
+## Collect data for game 12
+##Florida12 <- searchTwitter("#GoGators", since="2015-11-26", until="2015-11-30", n=10000)
+##Florida12.df <- rbind_all (lapply (Florida12, function(rr) rr$toDataFrame()))
+##write.csv(Florida12.df, file = "FloridaSt.csv")
+
+# Read previously stored data from data file.
+Game9 <- read.csv("Vanderbilt.csv")
+Game10 <- read.csv("Carolina.csv")
+## Game11 <- read.csv("FLAtl.csv")
+## Game12 <- read.csv("FloridaSt.csv")
+
+## Combine all game tweets into one big file.
+GameTweets <- bind_rows(Game9, Game10)
+```
+
+###Gathering Data for Games 11-12 - Coming soon...
+Collect a set of 10000 tweets for each of the last five ***Thursday-Saturday*** blocks on which a football game was played by the University of Florda. Repeat the hashtag collection and user tagging exercises for each of these samples. Do the same users appear to produce the same volume each week? Do the same secondary hashtags appear?
+
+```{r}
+## Games 11-12 coming soon...
+
+```
+
+####Game 9: Vanterbilt
+
+#####Evaluating HashTags
+
+Determining the number of hashtags used in each tweet and overall in the sample.
+
+```{r}
+
+## Find hashtags for Game 9. Add a column for hashtags and a column for number of hashtags.
+Game9 <- mutate (Game9, hashtags=regmatches(Game9$text, gregexpr(hashtag, Game9$text)))
+Game9 <- mutate (Game9, HQty=as.integer(lapply(Game9$hashtags, function(x) length(x))))
+
+```
+
+Determining the number of tweets at each hashtag level.
+
+```{r}
+## Create a Hashtags per Tweet table.
+HashtagsperTweet = table(Game9$HQty)
+HashtagsperTweetTable = as.data.frame(HashtagsperTweet)
+names(HashtagsperTweetTable)[1] = 'Number of Hashtags'
+names(HashtagsperTweetTable)[2] = 'Number of Tweets'
+HashtagsperTweetTable
+```
+
+Determining the number of hashtags in the data set.
+
+```{r}
+## Determine total number of hashtags.
+all.hashtags <- unlist(regmatches(Game9$text, gregexpr (hashtag, Game9$text)))
+
+## Determine total number of unique hashtags.
+unique.hashtags <- unique(all.hashtags <- unlist(regmatches(Game9$text, gregexpr (hashtag, Game9$text))))
+## all.hashtags
+```
+
+Using the `length()` function, there are a total of `r length(all.hashtags)` hashtags in the data set.
+
+Using the `length()` function, there are `r length(unique.hashtags)` unique hashtags in the data set.
+
+Finding the most frequently used hashtags.
+```{r}
+## Count the hashtag usage.
+hashtags.df <- data.frame(cbind(all.hashtags))
+hashcount <- count(hashtags.df, all.hashtags)
+hashcount <- hashcount[order(-hashcount$n),] 
+hashcount
+```
+
+#####Evaluating UserTags
+
+Determining the number of users tagged in each tweet. 
+
+```{r}
+
+## Find users for game 9.Add a column for usertags and a column for number of user tags in the tweet.
+##Game9 <- mutate (Game9, usertags=regmatches(Game9$text, gregexpr(users, Game9$text)))
+##Game9 <- mutate (Game9, UQty=as.integer(lapply(Game9$users, function(x) length(x))))
+
+Game9 <- mutate (Game9, usertags=regmatches(Game9$text, gregexpr(usertag, Game9$text)))
+Game9 <- mutate (Game9, UQty=as.integer(lapply(Game9$usertags, function(x) length(x))))
+```
+
+The number of users tagged per tweet.
+```{r}
+## Create a Hashtags per Tweet table.
+UserTagsperTweet = table(Game9$UQty)
+UserTagsperTweetTable = as.data.frame(UserTagsperTweet)
+names(UserTagsperTweetTable)[1] = 'Number of Users'
+names(UserTagsperTweetTable)[2] = 'Number of Tweets'
+UserTagsperTweetTable
+```
+The total number of usertags in the data set.
+```{r}
+## Determine total number of hashtags.
+all.usertags <- unlist(regmatches(Game9$text, gregexpr (usertag, Game9$text)))
+## all.hashtags
+length(all.usertags)
+```
+
+The total number of unique usertags in the data set.
+```{r}
+## Determine total number of unique hashtags.
+unique.usertags <- unique(all.usertags <- unlist(regmatches(Game9$text, gregexpr (usertag, Game9$text))))
+length(unique.usertags)
+
+```
+
+Finding the most commonly used usertags.
+```{r}
+## Count the hashtag usage.
+usertags.df <- data.frame(cbind(all.usertags))
+usercount <- count(usertags.df, all.usertags)
+usercount <- usercount[order(-usercount$n),] 
+usercount
+```
+
+The following 25 users tweeted most frequently during each game period.  The usertags were selected after eliminating users that were clearly accounts for the team proper or their PR department. That is, we're trying to find a fan community for your team that tweets about their team's games on a regular basis. This community will form the basis for the project looking ahead.
+
+```{r eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+## Find the 25 users that tweeted most frequently during Game 9.
+frequenttweeters9 <- summarise(group_by(Game9, screenName), count=n())
+frequenttweeters9 <- frequenttweeters9[order(-frequenttweeters9$count),]
+head(frequenttweeters9, 25)
+```
+
+
+```{r eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+## ## Find the 25 users that tweeted most frequently during Game 9.
+frequenttweeters10 <- summarise(group_by(Game10, screenName), count=n())
+frequenttweeters10 <- frequenttweeters10[order(-frequenttweeters10$count),]
+head(frequenttweeters10, 25)
+```
+
+```{r eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+## Remove tweets from FloridaGators, GatorsFB and UF
+GameTweets <- filter(GameTweets, screenName!="FloridaGators")
+GameTweets <- filter(GameTweets, screenName!="GatorsFB")
+GameTweets <- filter(GameTweets, screenName!="UF")
+
+## Find the 25 users that tweeted most frequently during Game 9 & 10.
+frequenttweeters <- summarise(group_by(GameTweets, screenName), count=n())
+frequenttweeters <- frequenttweeters[order(-frequenttweeters$count),]
+head(frequenttweeters, 25)
+```
+
+###The top 25 individual tweeters for each game are:
+(Note: We've removed the following UF users from this list: FloridaGators, GatorsFB, UF)
+
+Game 9                  | Game 10       | Game 11 | Game 12 |
+------------------------|---------------|---------|---------|
+SECstagram              |gator_fbreport |         |         |
+HotCorner_10            |LFTorresIII    |         |         |
+gogators1974            |TylerWardFilms |         |         |
+MrMarques2727           |GatorsSRH      |         |         |
+Trippo7                 |JayrockJenkins |         |         |
+Tebow815                |_Whoa_itsPayge_|         |         |
+CliffWilkin             |ESPNGainesville|         |         |
+_Whoa_itsPayge_         |TampaBaySRH    |         |         |
+GatorsSRH               |gatorlane      |         |         |
+gatorzonenews           |SWNY315|       |         |
+jhern2498               |brittanylaughsx|         |         |
+TampaBaySRH             |BrookinsOneil  |         |         |
+2103_amber              |haleythecoolkid|         |         |
+bmanning96              |bmanning96     |         |         | 
+major1029               |Emmy_ArmadaFC  |         |         |
+ClaireabellGatr         |ChaseRojas     |         |         |
+CVan_Huss               |the_timbo_slice|         |         |
+hunterlynch29           |cdcoldplay1    |         |         |
+krizielyvonne           |mikecombs386   |         |         |
+REGarrison              |ChompingGators |         |         |
+ktharris                |NikHarper      |         |         |
+rebeccavelaz17          |2_kontagious_  |         |         |
+TOTODUVALDIVA           |DarlingReina   |         |         |
+BrookinsOneil           |Ls_Up_850      |         |         |
+ChristophersZen         |pbpsports      |         |         |
+
+***
+
+##Starting Homework 9 specific analysis
+
+###Looking at user opinions
+
+Now that we have our top 25 users we want to look at their opinions about their team's upcoming performance in the next football game. For now we'll manipulate the data using the sentiment analysis tools we just acquired, and inspecting the capabilities of the R package `sentiment` to judge its usefulness
+
+First we'll produce a sample of 10 tweets from Game 9.  We're looking for tweets that have a large number of words, and express some form of emotion or "positive/negative" spin.
+```{r}
+TenTweets <- slice(Game9, 1)
+TenTweets <- bind_rows(TenTweets, slice(Game9, 125))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 4564))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 4550))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 4612))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 4632))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 5188))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 5254))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 5484))
+TenTweets <- bind_rows(TenTweets, slice(Game9, 4526))
+TenTweets$text
+
+```
+
+
+**Results:**  In examining the words contained within these tweets, some of them, in my opinion, do express emotional or "positive/negative" spin. We see words like:  "Good", "Wow", "great", "ruins" "Haha", "Sloppy".  Some of the tweets I picked actually use a negative qualifier with a positive word, such as "not pretty".  I choose these because I can see how they would create a challenge in a textual analysis.
+
+###Now let's see what the classifiers have to offer.
+
+We'll run the classifiers on the `TenTweets` extraction of text, using `verbose=TRUE` so we  can see how each word is being scored by the classifier.
+
+```{r}
+polarity.df <- as.data.frame(classify_polarity(TenTweets$text))
+TenTweets <- cbind(TenTweets, polarity.df$BEST_FIT)
+classify_polarity (TenTweets$text, verbose = TRUE)
+emotion <- classify_emotion (TenTweets$text, verbose = TRUE)
+emotion <- classify_emotion (TenTweets$text)
+```
+
+Now we'll run the classifiers on the full data set `GameTweets` which currently contains tweets from Game 9 & Game 10.  Add the classifiers (and only the classifiers, not the raw scores) as columns to your existing data frames. How many tweets are classified "positive" subjectivity? How many are classified as "joy" emotions?
+
+
+```{r}
+
+## Create a dataframe to hold the polarity classifiers.
+polarity.df <- as.data.frame(classify_polarity(GameTweets$text))
+
+## Bind the polarity classifier back to the original GameTweets data set.
+GameTweets <- cbind(GameTweets, BEST_FIT = polarity.df$BEST_FIT)
+
+```
+
+
+Now we will use `group_by` and `summarize` to find the fraction of tweets that are positive, neutral and negative for each user-day combination.
+
+```{r}
+## Create a new dataframe `polarity.df` to hold the summary table.
+polarity.df <- GameTweets %>% 
+  group_by(screenName) %>%
+  summarise(Positive = sum(BEST_FIT=="positive"),
+            Neutral = sum(BEST_FIT=="neutral"),
+            Negative = sum(BEST_FIT=="negative"),
+            Total = n(),
+            PosFrac = sum(BEST_FIT=="positive")/n(),
+            NeutFrac = sum(BEST_FIT=="neutral")/n(),
+            NegFrac = sum(BEST_FIT=="negative")/n(),
+            TotFrac = n()/n())
+
+## Sort the dataframe by total so that output will display the most active tweeters at the top.
+polarity.df <- polarity.df[order(-polarity.df$Total),]
+head(polarity.df, 25)
+```
+
+
+6) Which users have the greatest propensity for "joy"? Which for "sadness"? Is this consistent from day to day in the data set?
+
+```{r}
+
+## Create a dataframe to hold the emotion classifiers.
+emotion.df <- as.data.frame(classify_emotion(GameTweets$text))
+emotion.df <- rename(emotion.df, EBEST_FIT = BEST_FIT)
+## Bind the emotion classifiers back to the original GameTweets data set
+GameTweets <- cbind(GameTweets, emotion.df)
+
+## Create a new dataframe `polarity.df` to hold the summary table.
+emotion.df <- GameTweets %>% 
+  group_by(screenName) %>%
+  summarise(ANGER = mean(ANGER),
+            DISGUST = mean(DISGUST),
+            FEAR = mean(FEAR),
+            JOY = mean(JOY),
+            SADNESS = mean(SADNESS),
+            SURPRISE = mean(SURPRISE),
+            Total = n())
+
+## Sort the dataframe by total so that output will display the most active tweeters at the top.
+emotion.df <- emotion.df[order(-emotion.df$JOY),]
+head(emotion.df, 25)
+emotion.df <- emotion.df[order(-emotion.df$SADNESS),]
+head(emotion.df, 25)
+```
+
+
+```
+
