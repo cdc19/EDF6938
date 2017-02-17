@@ -2,3 +2,4 @@
 
 The content in this repository are compiled from the projects I completed in EDF6938 Data Science for Educational Research course at the University of Florida.
 
+To view the final project report click here: https://rawgit.com/cdc19/EDF6938/master/FinalProject-Calhoun.html
