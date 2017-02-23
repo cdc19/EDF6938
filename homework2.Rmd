@@ -7,10 +7,6 @@ output:
   html_document: default
 ---
 
-Add your code blocks to this document and alter the Author name to yours. Your submission will consist of your own R Markdown file plus the compiled HTML version of the document.
-
-I encourage you to submit your completed version as soon as possible. We will grade this quickly so that any opportunities for a regrade can be done quickly.
-
 ## Assignment
 
 This homework will continue using `dplyr` and the operations to join related data frames together. We will use the `GSS-extract-2.RData` data set from class on September 14.
