@@ -5,4 +5,4 @@ The content in this repository are compiled from the projects I completed in EDF
 To view the full report for the final project click here: 
 https://rawgit.com/cdc19/EDF6938/master/FinalProject.html
 
-The /Documents/ folder contains all of the knitted .pdf results files from each of the projects in this repository.
+The /Documents/ folder contains all of the knitted .pdf files from each of the projects in this repository.
